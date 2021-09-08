@@ -40,6 +40,7 @@ class Mlp(nn.Module):
         x = self.drop(x)
         
         if self.channel_drop_layer is not None:
+            # same as attn
             x, _ = self.channel_drop_layer.forward(x)
             # for debug
             #x, mask = self.channel_drop_layer.forward(x)
@@ -109,6 +110,7 @@ class Attention(nn.Module):
         x = (attn @ v).transpose(1, 2).reshape(B, N, self.num_heads * self.head_dim)
         
         if self.channel_drop_layer is not None:
+            # the mask will not be used after, because self.proj will keep the final dim is embed_dim
             x, _ = self.channel_drop_layer(x)
             # for debug
             #x, mask = self.channel_drop_layer(x)
@@ -218,8 +220,11 @@ class Block(nn.Module):
         # Only consider previous layer mask `layer_mask`
         # when the current block has `layer_drop`
         if self.layer_drop is not None:
+            # notice, block is skippable or not,
+            # so the mask of each img is all true or all false
             f_x, current_layer_mask = self.layer_drop(f_x)
             if layer_mask is not None:
+                # to keep align with the block before
                 current_layer_mask = current_layer_mask & layer_mask
             # for debug
             #print('Layer mask:', current_layer_mask)
@@ -240,6 +245,10 @@ class Block(nn.Module):
                 current_layer_mask = current_layer_mask & embed_mask
             else:
                 current_layer_mask = embed_mask
+            # when without layer drop,
+            # f_x is obtained after self.attn, which dim is embed_dim,
+            # but we have channel embed_mask before this block, so in order
+            # to keep align with, f_x = f_x * embed_mask 
             f_x = f_x * current_layer_mask
         
         x = x + f_x

@@ -91,13 +91,15 @@ class ChannelDrop(nn.Module):
     
     
     def forward_mask(self, x):
+        # use randperm to ensure all the subnet will be trained
         permutation_indices = torch.randperm(self.mask.shape[0])
         mask = self.mask[permutation_indices, ...]
         
         if not self.single_arch:
             assert x.shape[0] % self.example_per_arch == 0, 'In forward(), batch size is not divisible by sub-batch size (examples per arch).'
             num_valid_mask = x.shape[0] // self.example_per_arch
-         
+            # the bacth size  and example per arch is predefined, so the arch in this iteration is limited
+            # but because of above torch.randperm, all the arch will be trained
             if mask.shape[0] != num_valid_mask:
                 mask = mask[0:num_valid_mask, :, :]
                 
@@ -134,6 +136,9 @@ class ChannelDrop(nn.Module):
             #num_layer_config = min(
             #    math.ceil((self.epoch_now + 1) / self.num_warmup_epochs * len(num_channels_to_keep)),
             #    len(num_channels_to_keep))
+            
+            # will gradually add subchannel config, in the begining ,all set true
+            # after num_warmup_epochs, all sub channels setting will be sampled
             num_layer_config = min(
                 1 + math.floor(self.epoch_now * (len(num_channels_to_keep) - 1) / self.num_warmup_epochs), 
                 len(num_channels_to_keep)

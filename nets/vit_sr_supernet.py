@@ -181,6 +181,33 @@ class SpatialReductionPatchEmbedding(nn.Module):
             output_str = output_str + 'cls_tokens: {}, '.format(self.cls_tokens.shape)
         return output_str
     
+# ./scripts/vit-sr-nas/super_net/tiny.sh
+#  (patch_type, embed_dim)
+# ((4, 256), 
+#  (trans_type,(embed_dim,head_num, head_dim), (embed_dim, FFN_dim), is_removed)
+#  (1, (256, 6, 32), (256, 768), 1), 
+#  (1, (256, 6, 32), (256, 768), 1), 
+#  (1, (256, 6, 32), (256, 768), 1), 
+#  (1, (256, 6, 32), (256, 768), 1), 
+#  (1, (256, 6, 32), (256, 768), 1), 
+#  (1, (256, 6, 32), (256, 768), 1), 
+#  (sr_type, embed_dim, output_dim)
+#  (3, 256, 512), 
+#  (1, (512, 12, 48),(512, 1536), 1), 
+#  (1, (512, 12, 48), (512, 1536), 1), 
+#  (1, (512, 12, 48), (512, 1536), 1), 
+#  (1, (512, 12, 48), (512, 1536), 1), 
+#  (1, (512, 12, 48), (512, 1536), 1), 
+#  (1, (512, 12, 48), (512, 1536), 1), 
+#  (3, 512, 1024), 
+#  (1, (1024, 12, 64), (1024, 3072), 1), 
+#  (1, (1024, 12, 64), (1024, 3072), 1), 
+#  (1, (1024, 12, 64), (1024, 3072), 1), 
+#  (1, (1024, 12, 64), (1024, 3072), 1), 
+#  (1, (1024, 12, 64), (1024, 3072), 1), 
+#  (1, (1024, 12, 64), (1024, 3072), 1), 
+#  (head_type, in_dim, out_dim)
+#  (2, 1024, 1000))
 
 class FlexibleDistillVisionTransformerSR(nn.Module):
     """ 
@@ -296,6 +323,9 @@ class FlexibleDistillVisionTransformerSR(nn.Module):
                     block_class = Block
                 else:
                     block_class = BypassBlock # dummy
+                # one skippable block after one block
+                # skippable block: num_chs_keep_block['layer'] != None -> has layer_drop in block
+                # block: num_chs_keep_block['layer'] = None
                 self.blocks.append(block_class(dim=embed_dim, 
                     num_heads=block_def[_BLOCK_ATTN_IDX][_ATTN_NUM_HEAD], 
                     head_dim=block_def[_BLOCK_ATTN_IDX][_ATTN_HEAD_DIM], 
@@ -470,6 +500,8 @@ class FlexibleDistillVisionTransformerSR(nn.Module):
                 m.set_epoch(epoch)
         
         # channel sorting
+        # is to keep important channels in the front after warmup, 
+        # and channel mask will preferentially use the important channels
         if self.is_supernet:
             if self.num_warmup_epochs >= self.epoch_now:
                 for m in self.modules():

@@ -32,8 +32,13 @@ num_channels_to_keep = []
 
 # stage 1
 embed = np.array([256, 224, 192, 176, 160])
+# attn setting here because head_dim is predifined 32, so attn_dim = head_dim * head_num
+# is equal to 'head': np.array([6,5,4,3])
 block = {'attn': np.array([192, 160, 128, 96]), 'mlp': np.array([768, 704, 640, 576, 512, 448, 384]), 'layer': None}  
 block_skip = copy.deepcopy(block)
+# here why set 4 setting
+# notskip:skip=2:2=1:1
+# and torch.randperm will asure the masked channel setting sampling
 block_skip['layer'] = np.array([256, 256, 0, 0])
 
 num_channels_to_keep.append(embed)

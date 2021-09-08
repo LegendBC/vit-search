@@ -28,12 +28,14 @@ class MaskedLayerNormFunc(torch.autograd.Function):
         ctx.eps = eps
         
         B, N, C = x.size()
+        # mask true mean unused
         unmask_percent = mask.float()
         # calculate percentage of unmasked (effective) channels 
         unmask_percent = torch.mean(unmask_percent, dim=2, keepdim=True) 
         inv_unmask_percent = 1.0 / unmask_percent
 
         x_mu = x.mean(dim=2, keepdim=True)
+        # scale the corresponding statistic
         x_mu = x_mu * inv_unmask_percent
         x2 = (x ** 2).mean(dim=2, keepdim=True)
         x2 = x2 * inv_unmask_percent
