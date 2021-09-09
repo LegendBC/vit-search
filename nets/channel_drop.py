@@ -100,6 +100,7 @@ class ChannelDrop(nn.Module):
             num_valid_mask = x.shape[0] // self.example_per_arch
             # the bacth size  and example per arch is predefined, so the arch in this iteration is limited
             # but because of above torch.randperm, all the arch will be trained
+            # and because of math.ceil(), all the images in this batch will be distributed
             if mask.shape[0] != num_valid_mask:
                 mask = mask[0:num_valid_mask, :, :]
                 
@@ -144,15 +145,17 @@ class ChannelDrop(nn.Module):
                 len(num_channels_to_keep)
                 )
             num_layer_config = max(num_layer_config, 1)
-            
+        # exact num subset < len(num_channels_to_keep)
         self.num_layer_config = num_layer_config
         
         counter = 0
+        # num_cycles = supporting archs in this batch / exact num subset
         num_cycles = math.ceil((B // self.example_per_arch) / self.num_layer_config)
         
         if self.single_arch:
             num_cycles = 1
         
+        # exact archs cycles to fulfill this batch, won't left images because of math.ceil()
         self.mask = torch.zeros((self.num_layer_config * num_cycles, 1, C), dtype=torch.bool).cuda()
         
         for image_index in range(self.mask.shape[0]):
