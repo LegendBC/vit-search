@@ -55,6 +55,11 @@ class MaskedLayerNormFunc(torch.autograd.Function):
     @staticmethod
     @torch.cuda.amp.custom_bwd
     def backward(ctx, grad_output):
+        '''
+        refer to BN backward blog: https://kevinzakka.github.io/2016/09/14/batch_normalization/
+        here LN, the difference lies in mean and sum in channel dimension.
+        and because of mask, the calculation related to channel dimension should scale.
+        '''
         eps = ctx.eps
         
         B, N, C = grad_output.size()
